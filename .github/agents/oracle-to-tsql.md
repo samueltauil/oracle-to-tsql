@@ -35,7 +35,7 @@ Apply the following conversion rules systematically:
 | `NUMBER(p)` where p≤9 | `INT` | |
 | `NUMBER(p)` where p≤18 | `BIGINT` | |
 | `NUMBER(p,s)` | `DECIMAL(p,s)` | |
-| `NUMBER(1)` used as boolean | `BIT` | Check if values are only 0/1 |
+| `NUMBER(1)` | `TINYINT` | Oracle NUMBER(1) holds -9 to 9; BIT only holds 0/1/NULL. Default to TINYINT for safety. Add MIGRATION NOTE suggesting BIT if confirmed boolean-only usage |
 | `DATE` | `DATETIME2(0)` | Oracle DATE includes time! Use DATE only if time is never used |
 | `TIMESTAMP` | `DATETIME2` | |
 | `TIMESTAMP WITH TIME ZONE` | `DATETIMEOFFSET` | |

@@ -20,7 +20,7 @@ CREATE TABLE [dbo].[employees] (
     [salary]            DECIMAL(10,2),
     [commission_pct]    DECIMAL(4,2),
     [department_id]     INT,                                    -- MIGRATION NOTE: Oracle NUMBER(5) → INT (p≤9)
-    [is_active]         BIT                 DEFAULT 1,          -- MIGRATION NOTE: Oracle NUMBER(1) used as boolean → BIT
+    [is_active]         TINYINT             DEFAULT 1,          -- MIGRATION NOTE: Oracle NUMBER(1) can hold -9 to 9; using TINYINT for safety. Consider BIT if confirmed boolean (0/1 only)
     [notes]             NVARCHAR(MAX),                          -- MIGRATION NOTE: Oracle CLOB → NVARCHAR(MAX)
     [photo]             VARBINARY(MAX),                         -- MIGRATION NOTE: Oracle BLOB → VARBINARY(MAX)
     [resume]            NVARCHAR(MAX),                          -- MIGRATION NOTE: Oracle NCLOB → NVARCHAR(MAX)

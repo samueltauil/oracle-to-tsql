@@ -38,6 +38,7 @@ Use the following agents for the migration workflow:
 |--------|-------|
 | `VARCHAR2(n)` | `NVARCHAR(n)` or `VARCHAR(n)` |
 | `NUMBER` | `INT`, `BIGINT`, `DECIMAL(p,s)`, or `NUMERIC(p,s)` |
+| `NUMBER(1)` | `TINYINT` (safe default; use `BIT` only if confirmed 0/1 only) |
 | `NUMBER(p)` | `INT` (p≤9), `BIGINT` (p≤18), `DECIMAL(p)` |
 | `NUMBER(p,s)` | `DECIMAL(p,s)` |
 | `DATE` | `DATETIME2` (includes time) or `DATE` (date only) |
