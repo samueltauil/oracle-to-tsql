@@ -4,17 +4,20 @@ A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microso
 
 ## Quick Start
 
-1. **Drop** Oracle SQL files into `oracle-sql/`
-2. **Evaluate**: `@oracle-evaluator evaluate all files in oracle-sql/`
-3. **Convert**: `@oracle-to-tsql convert oracle-sql/my_procedure.sql`
-4. **Validate**: `@tsql-validator validate tsql-output/my_procedure.sql`
-5. **Optimize**: `@performance-analyzer analyze tsql-output/my_procedure.sql`
+1. **Copy sample files** (or drop your own Oracle SQL files) into `oracle-sql/`:
+   ```bash
+   cp samples/*.sql oracle-sql/
+   ```
+2. **Run the full pipeline**: `@migration-orchestrator migrate all`
+3. **Check status**: `@migration-orchestrator status`
+4. **Review results** in `tsql-output/` and `migration-reports/`
 
-> For bulk migration across many files, use `@migration-orchestrator migrate all` — see [Batch Migration](#batch-migration-use-orchestrator-with-parallel-sub-agents).
+> See [samples/README.md](samples/README.md) for detailed testing instructions.
 
 ## Project Structure
 
 ```
+samples/                 ← Sample Oracle SQL files for testing (5 files, 🟢→🔴)
 oracle-sql/              ← Drop Oracle SQL files here (source, read-only)
 tsql-output/             ← Converted T-SQL output (auto-generated)
 migration-reports/       ← Evaluation, validation & performance reports
