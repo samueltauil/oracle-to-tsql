@@ -43,36 +43,59 @@ migration-reports/       ← Evaluation, validation & performance reports
 
 ## Custom Tools
 
+### Discovery & Status
 | Tool | Description |
 |------|-------------|
-| `scan_oracle_files` | Lists all Oracle SQL files with metadata |
-| `migration_status` | Shows evaluation/conversion/validation status per file |
-| `list_migration_reports` | Lists all generated reports |
-| `init_migration_project` | Creates project directory structure |
+| `scan_oracle_files` | Discovers Oracle SQL files, returns structured JSON with metadata |
+| `migration_status` | Per-file status across all phases (pending/in_progress/done/failed) |
+| `list_migration_reports` | Lists all generated reports with type classification |
+| `init_migration_project` | Creates project directories and initializes state |
+
+### Batch Orchestration
+| Tool | Description |
+|------|-------------|
+| `generate_batch_plan` | Generates dispatch plan with sub-agent prompts per file+phase |
+| `claim_work_item` | Locks a file+phase as in_progress before dispatching |
+| `complete_work_item` | Marks file+phase as done after sub-agent succeeds |
+| `fail_work_item` | Records failure with error message for retry |
+| `reset_work_item` | Resets a file+phase to pending for retry |
 
 ## Workflow
 
+### Single File (use individual agents)
 ```
-┌─────────────┐     ┌──────────────┐     ┌───────────────┐     ┌────────────────────┐
-│   Drop SQL  │────►│   Evaluate   │────►│    Convert    │────►│     Validate       │
-│  oracle-sql/│     │ @oracle-eval │     │ @oracle-to-   │     │  @tsql-validator   │
-│             │     │              │     │    tsql       │     │                    │
-└─────────────┘     └──────┬───────┘     └───────┬───────┘     └─────────┬──────────┘
-                           │                     │                       │
-                           ▼                     ▼                       ▼
-                    migration-reports/     tsql-output/           migration-reports/
-                    evaluation-*.md        *.sql                  validation-*.md
-                                                                        │
-                                                                        ▼
-                                                              ┌────────────────────┐
-                                                              │  Perf Analyze      │
-                                                              │ @performance-      │
-                                                              │    analyzer        │
-                                                              └────────┬───────────┘
-                                                                       │
-                                                                       ▼
-                                                                migration-reports/
-                                                                performance-*.md
+@oracle-evaluator evaluate oracle-sql/my_proc.sql
+@oracle-to-tsql convert oracle-sql/my_proc.sql
+@tsql-validator validate tsql-output/my_proc.sql
+@performance-analyzer analyze tsql-output/my_proc.sql
+```
+
+### Multiple Files (use orchestrator with parallel sub-agents)
+```
+@migration-orchestrator evaluate all
+@migration-orchestrator convert all
+@migration-orchestrator migrate all    ← full pipeline
+@migration-orchestrator status
+@migration-orchestrator retry failed
+```
+
+The orchestrator dispatches one sub-agent per file (up to 5 in parallel), tracks state via the extension, and aggregates results.
+
+```
+                         ┌─────────────────────────────────────┐
+                         │      @migration-orchestrator         │
+                         │  scan → plan → dispatch → collect    │
+                         └──────────┬──────────────────────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+     ┌──────────────┐     ┌──────────────┐      ┌──────────────┐
+     │  sub-agent 1 │     │  sub-agent 2 │ ...  │  sub-agent N │
+     │  file_a.sql  │     │  file_b.sql  │      │  file_n.sql  │
+     └──────┬───────┘     └──────┬───────┘      └──────┬───────┘
+            │                    │                      │
+            ▼                    ▼                      ▼
+     evaluate → convert → validate → analyze  (per file)
 ```
 
 ## Supported Oracle File Types
