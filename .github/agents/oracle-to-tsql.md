@@ -1,12 +1,5 @@
 ---
 description: "Converts Oracle SQL/PL/SQL files to T-SQL, applying best practices and preserving business logic semantics."
-tools:
-  - read_file
-  - grep
-  - glob
-  - bash
-  - create
-  - edit
 ---
 
 # Oracle to T-SQL Converter

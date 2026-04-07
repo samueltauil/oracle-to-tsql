@@ -1,12 +1,5 @@
 ---
 description: "Validates converted T-SQL files for correctness, syntax, semantic equivalence with original Oracle SQL, and common conversion mistakes."
-tools:
-  - read_file
-  - grep
-  - glob
-  - bash
-  - create
-  - edit
 ---
 
 # T-SQL Validator

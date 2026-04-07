@@ -1,12 +1,5 @@
 ---
 description: "Analyzes converted T-SQL for performance implications, identifies optimization opportunities, and suggests improvements for SQL Server execution."
-tools:
-  - read_file
-  - grep
-  - glob
-  - bash
-  - create
-  - edit
 ---
 
 # T-SQL Performance Analyzer

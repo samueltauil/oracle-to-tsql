@@ -14,6 +14,23 @@ How to use this Oracle-to-TSQL migration toolkit with **GitHub Copilot CLI** and
 
 ---
 
+## VS Code vs Copilot CLI — Feature Comparison
+
+| Feature | VS Code Copilot Chat | Copilot CLI |
+|---------|---------------------|-------------|
+| Custom agents (`@oracle-evaluator`, etc.) | ✅ | ✅ |
+| Global instructions (copilot-instructions.md) | ✅ | ✅ |
+| Path-specific instructions (auto-context) | ✅ | ✅ |
+| Single-file migration | ✅ | ✅ |
+| Batch migration (`@migration-orchestrator`) | ✅ Sequential | ✅ Parallel (sub-agents) |
+| Custom extension tools (`scan_oracle_files`) | ❌ | ✅ |
+| Queue state management | ❌ | ✅ |
+| Parallel sub-agent dispatch | ❌ | ✅ |
+
+> **Both environments support the full migration workflow.** VS Code processes files one at a time; Copilot CLI can parallelize across multiple files using sub-agents and extension tools.
+
+---
+
 ## Using with VS Code + GitHub Copilot Chat
 
 ### Setup
@@ -106,7 +123,9 @@ This means even **regular Copilot Chat** (without `@agent`) gives migration-awar
    copilot
    ```
 
-### Custom Tools (available immediately)
+### Custom Tools (Copilot CLI only)
+
+> **Note**: The extension tools below are only available in Copilot CLI, not in VS Code Copilot Chat. In VS Code, the agents use built-in file and terminal tools instead.
 
 The extension provides tools that the CLI agent can use. Ask Copilot to use them:
 
@@ -336,37 +355,51 @@ graph TB
 | `.github/instructions/tsql-output.instructions.md` | Enforces T-SQL output standards (headers, SET options, error handling, GO separators) | When working with `tsql-output/**` files |
 | `.github/instructions/migration-reports.instructions.md` | Defines report format with severity tags | When working with `migration-reports/**` files |
 | `.github/agents/*.md` | Defines specialized agent behavior with detailed prompts | When you invoke `@agent-name` |
-| `.github/extensions/oracle-migration/extension.mjs` | Provides custom tools for file discovery, status tracking, batch orchestration | Automatically loaded at session start |
+| `.github/extensions/oracle-migration/extension.mjs` | Provides custom tools for file discovery, status tracking, batch orchestration | **Copilot CLI only** — loaded at session start |
 
 ---
 
 ## Troubleshooting
 
-### Extension tools not available
+### Extension tools not available (VS Code)
 
-If custom tools like `scan_oracle_files` are not recognized:
-- **VS Code**: Reload the window (`Ctrl+Shift+P` → "Developer: Reload Window")
-- **Copilot CLI**: Run `/clear` to restart the session, which re-discovers extensions
+**This is expected.** Custom extension tools (`scan_oracle_files`, `migration_status`, etc.) only work in Copilot CLI. In VS Code, agents use built-in file and terminal tools instead. The migration workflow works in both environments — VS Code just processes files sequentially.
+
+### Extension tools not available (Copilot CLI)
+
+If custom tools aren't recognized in Copilot CLI:
+- Run `/clear` to restart the session and re-discover extensions
+- Ensure you're in the root of this repository (where `.github/` is located)
 
 ### Agent not found
 
 If `@oracle-evaluator` or other agents don't appear:
 - Ensure you're in the root of this repository
 - Ensure the `.github/agents/` directory exists with `.md` files
-- Restart your Copilot session
+- **VS Code**: Reload the window (`Ctrl+Shift+P` → "Developer: Reload Window")
+- **Copilot CLI**: Run `/clear` to restart the session
+
+### Orchestrator says "tools not available" in VS Code
+
+The orchestrator adapts to the available tools. In VS Code it processes files sequentially using file reading and terminal commands instead of custom extension tools. If it still fails:
+- Try processing one file at a time with individual agents instead:
+  ```
+  @oracle-evaluator evaluate oracle-sql/my_file.sql
+  @oracle-to-tsql convert oracle-sql/my_file.sql
+  ```
 
 ### Sub-agents not running in parallel
 
-The orchestrator dispatches sub-agents using `task` tool in background mode. If they run sequentially:
-- This is expected in some environments — the orchestrator will still process all files
-- Check `@migration-orchestrator status` for progress
+Parallel sub-agent dispatch (`task` tool) is **only available in Copilot CLI**. In VS Code, the orchestrator processes files one at a time — this is expected behavior, not an error.
 
-### State file issues
+### State file issues (Copilot CLI)
 
 If `migration_status` shows stale data:
 ```bash
-# Reset all state
-rm migration-reports/.migration-state.json
+# Reset all state (Unix/macOS/WSL)
+rm -f migration-reports/.migration-state.json
+# Windows PowerShell
+Remove-Item migration-reports/.migration-state.json -ErrorAction SilentlyContinue
 # Then re-scan
 > scan all oracle files
 ```

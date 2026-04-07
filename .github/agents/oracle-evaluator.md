@@ -1,12 +1,5 @@
 ---
 description: "Evaluates Oracle SQL/PL/SQL files for migration complexity, identifies unsupported features, dependencies, and risks before converting to T-SQL."
-tools:
-  - read_file
-  - grep
-  - glob
-  - bash
-  - create
-  - edit
 ---
 
 # Oracle SQL Migration Evaluator
