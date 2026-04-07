@@ -1,6 +1,6 @@
-# Oracle to T-SQL Migration Project
+# Oracle to T-SQL Migration Toolkit
 
-A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microsoft SQL Server T-SQL.
+A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microsoft SQL Server T-SQL. Uses custom agents, instructions, and extensions to evaluate, convert, validate, and optimize your SQL migration — with full support for batch processing across many files.
 
 ## Quick Start
 
@@ -9,6 +9,8 @@ A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microso
 3. **Convert**: `@oracle-to-tsql convert oracle-sql/my_procedure.sql`
 4. **Validate**: `@tsql-validator validate tsql-output/my_procedure.sql`
 5. **Optimize**: `@performance-analyzer analyze tsql-output/my_procedure.sql`
+
+> For bulk migration across many files, use `@migration-orchestrator migrate all` — see [Batch Migration](#batch-migration-use-orchestrator-with-parallel-sub-agents).
 
 ## Project Structure
 
@@ -26,20 +28,37 @@ migration-reports/       ← Evaluation, validation & performance reports
   │   ├── oracle-evaluator.md          ← @oracle-evaluator agent
   │   ├── oracle-to-tsql.md            ← @oracle-to-tsql agent
   │   ├── tsql-validator.md            ← @tsql-validator agent
-  │   └── performance-analyzer.md      ← @performance-analyzer agent
+  │   ├── performance-analyzer.md      ← @performance-analyzer agent
+  │   └── migration-orchestrator.md    ← @migration-orchestrator agent
   └── extensions/
       └── oracle-migration/
-          └── extension.mjs            ← Custom tools (scan, status, reports)
+          └── extension.mjs            ← Custom tools (scan, status, batch, state)
+```
+
+## Migration Pipeline
+
+```mermaid
+flowchart LR
+    A["📂 Drop SQL files\noracle-sql/"] --> B["🔍 Evaluate\n@oracle-evaluator"]
+    B --> C["🔄 Convert\n@oracle-to-tsql"]
+    C --> D["✅ Validate\n@tsql-validator"]
+    D --> E["⚡ Analyze\n@performance-analyzer"]
+
+    B -->|report| R1["migration-reports/\nevaluation-*.md"]
+    C -->|output| R2["tsql-output/\n*.sql"]
+    D -->|report| R3["migration-reports/\nvalidation-*.md"]
+    E -->|report| R4["migration-reports/\nperformance-*.md"]
 ```
 
 ## Custom Agents
 
 | Agent | Purpose | Example Usage |
 |-------|---------|---------------|
-| `@oracle-evaluator` | Assess migration complexity | `@oracle-evaluator evaluate oracle-sql/pkg_orders.sql` |
-| `@oracle-to-tsql` | Convert Oracle → T-SQL | `@oracle-to-tsql convert oracle-sql/pkg_orders.sql` |
-| `@tsql-validator` | Validate converted T-SQL | `@tsql-validator validate tsql-output/pkg_orders.sql` |
-| `@performance-analyzer` | Performance optimization | `@performance-analyzer analyze tsql-output/pkg_orders.sql` |
+| `@oracle-evaluator` | Assess migration complexity and risks | `@oracle-evaluator evaluate oracle-sql/pkg_orders.sql` |
+| `@oracle-to-tsql` | Convert Oracle SQL → T-SQL | `@oracle-to-tsql convert oracle-sql/pkg_orders.sql` |
+| `@tsql-validator` | Validate converted T-SQL correctness | `@tsql-validator validate tsql-output/pkg_orders.sql` |
+| `@performance-analyzer` | Performance analysis and optimization | `@performance-analyzer analyze tsql-output/pkg_orders.sql` |
+| `@migration-orchestrator` | Batch orchestration with parallel sub-agents | `@migration-orchestrator migrate all` |
 
 ## Custom Tools
 
@@ -63,6 +82,7 @@ migration-reports/       ← Evaluation, validation & performance reports
 ## Workflow
 
 ### Single File (use individual agents)
+
 ```
 @oracle-evaluator evaluate oracle-sql/my_proc.sql
 @oracle-to-tsql convert oracle-sql/my_proc.sql
@@ -70,7 +90,8 @@ migration-reports/       ← Evaluation, validation & performance reports
 @performance-analyzer analyze tsql-output/my_proc.sql
 ```
 
-### Multiple Files (use orchestrator with parallel sub-agents)
+### Batch Migration (use orchestrator with parallel sub-agents)
+
 ```
 @migration-orchestrator evaluate all
 @migration-orchestrator convert all
@@ -81,21 +102,30 @@ migration-reports/       ← Evaluation, validation & performance reports
 
 The orchestrator dispatches one sub-agent per file (up to 5 in parallel), tracks state via the extension, and aggregates results.
 
+```mermaid
+flowchart TB
+    O["@migration-orchestrator\nscan → plan → dispatch → collect"]
+    O --> S1["sub-agent 1\nfile_a.sql"]
+    O --> S2["sub-agent 2\nfile_b.sql"]
+    O --> S3["sub-agent 3\nfile_c.sql"]
+    O --> SN["sub-agent N\nfile_n.sql"]
+
+    S1 --> P1["evaluate → convert → validate → analyze"]
+    S2 --> P2["evaluate → convert → validate → analyze"]
+    S3 --> P3["evaluate → convert → validate → analyze"]
+    SN --> PN["evaluate → convert → validate → analyze"]
 ```
-                         ┌─────────────────────────────────────┐
-                         │      @migration-orchestrator         │
-                         │  scan → plan → dispatch → collect    │
-                         └──────────┬──────────────────────────┘
-                                    │
-              ┌─────────────────────┼─────────────────────┐
-              ▼                     ▼                     ▼
-     ┌──────────────┐     ┌──────────────┐      ┌──────────────┐
-     │  sub-agent 1 │     │  sub-agent 2 │ ...  │  sub-agent N │
-     │  file_a.sql  │     │  file_b.sql  │      │  file_n.sql  │
-     └──────┬───────┘     └──────┬───────┘      └──────┬───────┘
-            │                    │                      │
-            ▼                    ▼                      ▼
-     evaluate → convert → validate → analyze  (per file)
+
+### Work Item State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: scan_oracle_files
+    pending --> in_progress: claim_work_item
+    in_progress --> done: complete_work_item
+    in_progress --> failed: fail_work_item
+    failed --> pending: reset_work_item
+    done --> pending: reset_work_item
 ```
 
 ## Supported Oracle File Types
