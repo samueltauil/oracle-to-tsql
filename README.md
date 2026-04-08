@@ -2,6 +2,10 @@
 
 A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microsoft SQL Server T-SQL. Uses custom agents, instructions, and extensions to evaluate, convert, validate, and optimize your SQL migration — with full support for batch processing across many files.
 
+![Demo](docs/demo-preview.gif)
+
+> 📺 Watch the [full demo video](docs/demo-fast.mp4) for a complete walkthrough of the migration pipeline.
+
 ## Quick Start
 
 1. **Copy sample files** (or drop your own Oracle SQL files) into `oracle-sql/`:
