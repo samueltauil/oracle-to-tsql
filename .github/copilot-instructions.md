@@ -457,3 +457,91 @@ EXEC sp_executesql @sql;
 - ❌ `NTEXT` / `TEXT` / `IMAGE` — use `NVARCHAR(MAX)` / `VARBINARY(MAX)`
 - ❌ `sp_rename` for constraint names in migration — use `DROP` + `CREATE`
 - ❌ `NOLOCK` hints as a blanket fix — use RCSI instead
+
+---
+
+## Power BI M-Language Reference
+
+### T-SQL → Power Query M Type Mappings
+
+| T-SQL Type | M Type | Notes |
+|-----------|--------|-------|
+| `INT` | `Int32.Type` | |
+| `BIGINT` | `Int64.Type` | |
+| `TINYINT` | `Int8.Type` | |
+| `DECIMAL(p,s)` / `NUMERIC(p,s)` | `Decimal.Type` | |
+| `BIT` | `Logical.Type` | |
+| `NVARCHAR(n)` / `VARCHAR(n)` | `Text.Type` | |
+| `NVARCHAR(MAX)` | `Text.Type` | |
+| `DATETIME2` | `DateTime.Type` | |
+| `DATE` | `Date.Type` | |
+| `DATETIMEOFFSET` | `DateTimeZone.Type` | |
+| `FLOAT` / `REAL` | `Double.Type` | |
+| `VARBINARY(n)` / `VARBINARY(MAX)` | `Binary.Type` | |
+| `XML` | `Text.Type` | Parsed as text in M |
+
+### Conversion Mode Decision Rules
+
+| Source Pattern | Mode | Rationale |
+|---------------|------|-----------|
+| Simple `SELECT` from table/view | Native M | Folds to SQL Server — best performance |
+| `SELECT` with `WHERE`, `ORDER BY`, `TOP` | Native M | Standard M operations fold |
+| `SELECT` with basic `JOIN` | Native M | `Table.NestedJoin` folds |
+| `SELECT` with `GROUP BY` / aggregates | Native M | `Table.Group` folds for simple cases |
+| Stored procedure call | Native Query | No M equivalent — must wrap |
+| Recursive CTE | Native Query | M has no recursive construct |
+| Dynamic SQL / `sp_executesql` | Native Query | Cannot represent in M |
+| Multi-statement procedural logic | Native Query | Beyond M's functional model |
+| `MERGE` / complex DML | Native Query | M is read-oriented |
+| Window functions (`ROW_NUMBER`, etc.) | Native Query | Limited folding support |
+
+### Common M Patterns
+
+#### Table Access
+```m
+let
+    Source = Sql.Database(ServerName, DatabaseName),
+    dbo_employees = Source{[Schema="dbo", Item="employees"]}[Data]
+in
+    dbo_employees
+```
+
+#### Stored Procedure Call
+```m
+let
+    Source = Sql.Database(ServerName, DatabaseName),
+    result = Value.NativeQuery(
+        Source,
+        "EXEC [dbo].[sp_get_employees] @dept_id = @DeptId",
+        [DeptId = 10],
+        [EnableFolding=false]
+    )
+in
+    result
+```
+
+#### Native Query Wrapper (for complex T-SQL)
+```m
+let
+    Source = Sql.Database(ServerName, DatabaseName),
+    query = Value.NativeQuery(
+        Source,
+        "SELECT e.employee_id, e.first_name, e.last_name, d.department_name#(lf)" &
+        "FROM [dbo].[employees] e#(lf)" &
+        "INNER JOIN [dbo].[departments] d ON e.department_id = d.department_id#(lf)" &
+        "WHERE e.is_active = 1#(lf)" &
+        "ORDER BY e.last_name",
+        null,
+        [EnableFolding=true]
+    )
+in
+    query
+```
+
+### M-Language Output Standards
+
+- Always use parameterized connections (`ServerName`, `DatabaseName` variables)
+- Include file header comments with source reference and conversion mode
+- Use `// MIGRATION NOTE:` / `// MIGRATION WARNING:` / `// MIGRATION TODO:` annotations
+- Prefer Native M (query folding) over Native Query wrappers when feasible
+- One `.pq` file per logical object — decompose multi-object source files

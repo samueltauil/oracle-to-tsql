@@ -1,5 +1,5 @@
 ---
-description: "Orchestrates multi-file Oracle-to-TSQL migration. Discovers files, runs the pipeline (evaluate → convert → validate → analyze), and tracks progress."
+description: "Orchestrates multi-file Oracle-to-TSQL migration. Discovers files, runs the 5-phase pipeline (evaluate → convert → validate → analyze → m-language), generates consolidated reports, and tracks progress."
 ---
 
 # Migration Orchestrator
@@ -48,7 +48,7 @@ migration_status
 
 ### Step 3: Process Each File
 
-For each Oracle SQL file that hasn't been processed yet, run the 4-phase pipeline **in order**:
+For each Oracle SQL file that hasn't been processed yet, run the 5-phase pipeline **in order**:
 
 #### Phase 1: Evaluate
 Read the file `.github/agents/oracle-evaluator.md` for rules, then:
@@ -79,17 +79,39 @@ Read the file `.github/agents/performance-analyzer.md` for rules, then:
 - Analyze for performance issues, cursor→set-based opportunities, index needs
 - Save report to `migration-reports/performance-<filename>.md`
 
+#### Phase 5: M-Language Conversion
+Read the file `.github/agents/m-language-converter.md` for rules, then:
+- Read the converted T-SQL file from `tsql-output/`
+- Read the original Oracle SQL and evaluation report for context
+- Optionally read validation and performance reports if available
+- Convert T-SQL to Power Query M code
+- Produce one `.pq` file per logical object in `pbi-output/`
+- Save phase report to `migration-reports/m-language-<filename>.md`
+
 ### Step 4: Report Progress
 
 After each file completes, show a status summary:
 
 ```
-| File | Evaluated | Converted | Validated | Analyzed |
-|------|-----------|-----------|-----------|----------|
-| file1.sql | ✅ | ✅ | ✅ | ✅ |
-| file2.sql | ✅ | ✅ | ⬜ | ⬜ |
-| file3.sql | ⬜ | ⬜ | ⬜ | ⬜ |
+| File | Evaluated | Converted | Validated | Analyzed | M-Language | Consolidated |
+|------|-----------|-----------|-----------|----------|------------|--------------|
+| file1.sql | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| file2.sql | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
+| file3.sql | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 ```
+
+### Step 5: Generate Consolidated Report
+
+After all phases complete for a file, generate a single consolidated report:
+
+**Using extension tool** (CLI only):
+```
+generate_consolidated_report(relPath)
+```
+
+**Manually** (VS Code): Read all phase reports and combine key findings into `migration-reports/migration-<filename>.md`
+
+The consolidated report merges evaluation, validation, performance, and M-language reports into one document per file. Individual phase reports are preserved as source-of-truth.
 
 ## Parallel Processing (Copilot CLI only)
 
@@ -101,6 +123,8 @@ When the `task` tool is available, you can dispatch sub-agents for parallel proc
 4. After completion, use `complete_work_item` or `fail_work_item` to update state
 5. Process in batches of 5, waiting for each batch to finish
 
+**Note**: The m-language phase can run in parallel with analyze since both depend on validate (not on each other). When dispatching work, launch both phases simultaneously for each file after validate completes.
+
 Each sub-agent prompt should instruct the agent to:
 - Read the relevant `.github/agents/<phase-agent>.md` for rules
 - Read `.github/copilot-instructions.md` for reference tables
@@ -111,17 +135,21 @@ Each sub-agent prompt should instruct the agent to:
 
 | Request | Action |
 |---------|--------|
-| "migrate all" | Full pipeline: evaluate → convert → validate → analyze for all files |
+| "migrate all" | Full pipeline: evaluate → convert → validate → analyze → m-language + consolidated report for all files |
 | "evaluate all" | Run evaluate phase on all unevaluated files |
 | "convert all" | Run convert phase on all unconverted files |
 | "validate all" | Run validate phase on all unvalidated files |
 | "analyze all" | Run analyze phase on all unanalyzed files |
+| "m-language all" | Run m-language phase on all files with validate done |
+| "consolidate all" | Generate consolidated reports for all fully-processed files |
 | "status" | Show which files have been processed through which phases |
 | "<phase> <file>" | Run one phase on one specific file |
 
 ## Important Notes
 
-- **Phase order matters**: evaluate → convert → validate → analyze. Don't skip phases.
+- **Phase order matters**: evaluate → convert → validate → analyze → m-language. Don't skip phases.
+- **m-language depends on validate**: The m-language phase requires validate to be done, but does not depend on analyze — performance analysis is advisory. This means m-language and analyze can run in parallel.
+- **After all phases, generate consolidated report per file**: The consolidated report merges all phase findings into a single document.
 - **Read the agent rules**: Before each phase, read the corresponding agent `.md` file for detailed conversion rules and report templates.
 - **One file at a time in VS Code**: Process sequentially. This is expected behavior — not an error.
 - **Check existing output**: Skip files that already have output from a given phase (don't re-process unless asked).

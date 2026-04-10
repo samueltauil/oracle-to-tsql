@@ -1,6 +1,6 @@
 # Oracle to T-SQL Migration Toolkit
 
-A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microsoft SQL Server T-SQL. Uses custom agents, instructions, and extensions to evaluate, convert, validate, and optimize your SQL migration — with full support for batch processing across many files.
+A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microsoft SQL Server T-SQL. Uses custom agents, instructions, and extensions to evaluate, convert, validate, optimize, and generate Power BI M-language for your SQL migration — with full support for batch processing across many files.
 
 ![Demo](docs/demo-preview.gif)
 
@@ -14,7 +14,7 @@ A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microso
    ```
 2. **Run the full pipeline**: `@migration-orchestrator migrate all`
 3. **Check status**: `@migration-orchestrator status`
-4. **Review results** in `tsql-output/` and `migration-reports/`
+4. **Review results** in `tsql-output/`, `pbi-output/`, and `migration-reports/`
 
 > See [samples/README.md](samples/README.md) for detailed testing instructions.
 
@@ -24,18 +24,21 @@ A GitHub Copilot-powered toolkit for migrating Oracle SQL/PL/SQL code to Microso
 samples/                 ← Sample Oracle SQL files for testing (5 files, 🟢→🔴)
 oracle-sql/              ← Drop Oracle SQL files here (source, read-only)
 tsql-output/             ← Converted T-SQL output (auto-generated)
+pbi-output/              ← Power BI M-language output (.pq files)
 migration-reports/       ← Evaluation, validation & performance reports
 .github/
   ├── copilot-instructions.md          ← Global conversion reference
   ├── instructions/
   │   ├── oracle-sql.instructions.md   ← Context for Oracle files
   │   ├── tsql-output.instructions.md  ← Standards for T-SQL output
+  │   ├── pbi-output.instructions.md   ← Standards for PBI output
   │   └── migration-reports.instructions.md
   ├── agents/
   │   ├── oracle-evaluator.md          ← @oracle-evaluator agent
   │   ├── oracle-to-tsql.md            ← @oracle-to-tsql agent
   │   ├── tsql-validator.md            ← @tsql-validator agent
   │   ├── performance-analyzer.md      ← @performance-analyzer agent
+  │   ├── m-language-converter.md      ← @m-language-converter agent
   │   └── migration-orchestrator.md    ← @migration-orchestrator agent
   └── extensions/
       └── oracle-migration/
@@ -50,11 +53,14 @@ flowchart LR
     B --> C["🔄 Convert\n@oracle-to-tsql"]
     C --> D["✅ Validate\n@tsql-validator"]
     D --> E["⚡ Analyze\n@performance-analyzer"]
+    D --> F["📊 M-Language\n@m-language-converter"]
 
     B -->|report| R1["migration-reports/\nevaluation-*.md"]
     C -->|output| R2["tsql-output/\n*.sql"]
     D -->|report| R3["migration-reports/\nvalidation-*.md"]
     E -->|report| R4["migration-reports/\nperformance-*.md"]
+    F -->|output| R5["pbi-output/\n*.pq"]
+    F -->|report| R6["migration-reports/\nm-language-*.md"]
 ```
 
 ## Custom Agents
@@ -65,6 +71,7 @@ flowchart LR
 | `@oracle-to-tsql` | Convert Oracle SQL → T-SQL | `@oracle-to-tsql convert oracle-sql/pkg_orders.sql` |
 | `@tsql-validator` | Validate converted T-SQL correctness | `@tsql-validator validate tsql-output/pkg_orders.sql` |
 | `@performance-analyzer` | Performance analysis and optimization | `@performance-analyzer analyze tsql-output/pkg_orders.sql` |
+| `@m-language-converter` | Generate Power BI M-language queries | `@m-language-converter convert tsql-output/pkg_orders.sql` |
 | `@migration-orchestrator` | Batch orchestration with parallel sub-agents | `@migration-orchestrator migrate all` |
 
 ## Custom Tools
@@ -75,6 +82,7 @@ flowchart LR
 | `scan_oracle_files` | Discovers Oracle SQL files, returns structured JSON with metadata |
 | `migration_status` | Per-file status across all phases (pending/in_progress/done/failed) |
 | `list_migration_reports` | Lists all generated reports with type classification |
+| `generate_consolidated_report` | Merges all per-phase reports into a single consolidated report per file |
 | `init_migration_project` | Creates project directories and initializes state |
 
 ### Batch Orchestration
@@ -95,6 +103,7 @@ flowchart LR
 @oracle-to-tsql convert oracle-sql/my_proc.sql
 @tsql-validator validate tsql-output/my_proc.sql
 @performance-analyzer analyze tsql-output/my_proc.sql
+@m-language-converter convert tsql-output/my_proc.sql
 ```
 
 ### Batch Migration (use orchestrator with parallel sub-agents)
@@ -102,7 +111,8 @@ flowchart LR
 ```
 @migration-orchestrator evaluate all
 @migration-orchestrator convert all
-@migration-orchestrator migrate all    ← full pipeline
+@migration-orchestrator m-language all
+@migration-orchestrator migrate all    ← full 5-phase pipeline
 @migration-orchestrator status
 @migration-orchestrator retry failed
 ```
@@ -117,10 +127,10 @@ flowchart TB
     O --> S3["sub-agent 3\nfile_c.sql"]
     O --> SN["sub-agent N\nfile_n.sql"]
 
-    S1 --> P1["evaluate → convert → validate → analyze"]
-    S2 --> P2["evaluate → convert → validate → analyze"]
-    S3 --> P3["evaluate → convert → validate → analyze"]
-    SN --> PN["evaluate → convert → validate → analyze"]
+    S1 --> P1["evaluate → convert → validate → analyze → m-language"]
+    S2 --> P2["evaluate → convert → validate → analyze → m-language"]
+    S3 --> P3["evaluate → convert → validate → analyze → m-language"]
+    SN --> PN["evaluate → convert → validate → analyze → m-language"]
 ```
 
 ### Work Item State Machine
