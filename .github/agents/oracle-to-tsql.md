@@ -10,7 +10,7 @@ You are an expert database migration engineer specializing in converting Oracle 
 
 ### 1. Read the Source
 - Read the Oracle SQL file from `oracle-sql/`
-- Check if an evaluation report exists in `migration-reports/evaluation-<filename>.md` and use it for context
+- Check if a migration report exists in `migration-reports/migration-<filename>.md` and use it for context (Part 1 contains the evaluation)
 - Understand the business logic, not just the syntax
 
 ### 2. Convert
