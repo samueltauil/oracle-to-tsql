@@ -351,13 +351,34 @@ RAISE_APPLICATION_ERROR(-20001) → THROW 50001, 'message', 1;
 Every converted file must:
 - Start with the standard file header (see tsql-output instructions)
 - Include `SET ANSI_NULLS ON; GO; SET QUOTED_IDENTIFIER ON; GO;`
-- Use schema-qualified names (`[dbo].[object_name]`)
+- Use schema-qualified names per the **Schema Qualification Rules** below
 - Include `SET NOCOUNT ON` in procedures
 - Use `BEGIN TRY/CATCH` for error handling
 - Include `GO` batch separators
 - Add `-- MIGRATION NOTE:` comments where behavior differs
 - Add `-- MIGRATION WARNING:` for areas needing human review
 - Add `-- MIGRATION TODO:` for items requiring additional work or testing
+
+#### Schema Qualification Rules
+
+All object references must be fully qualified. If an object is already fully qualified, leave it unchanged. Apply the following mapping:
+
+| Object Type | Condition | Qualified Schema |
+|-------------|-----------|------------------|
+| Table | Name contains `CHIRPS` or `TIPPS` | `[CHSTObjects].[CHIRPS_TIPPS]` |
+| Table | Name begins with `SF_` | `[CHSTObjects].[PHOA]` |
+| Table | Name begins with `PIECES_` | `[CHSTObjects].[PHOA]` |
+| Function | Name begins with `EFN_` | `[Clarity_Report].[EPIC_UTIL]` |
+| All others | Default | `[Clarity_Report].[dbo]` |
+
+**Examples:**
+```sql
+-- CHIRPS_EVENTS         → [CHSTObjects].[CHIRPS_TIPPS].[CHIRPS_EVENTS]
+-- SF_PATIENT_DATA       → [CHSTObjects].[PHOA].[SF_PATIENT_DATA]
+-- PIECES_DETAIL         → [CHSTObjects].[PHOA].[PIECES_DETAIL]
+-- EFN_GET_VALUE(...)    → [Clarity_Report].[EPIC_UTIL].[EFN_GET_VALUE](...)
+-- EMPLOYEES             → [Clarity_Report].[dbo].[EMPLOYEES]
+```
 
 ### 4. Save Output
 

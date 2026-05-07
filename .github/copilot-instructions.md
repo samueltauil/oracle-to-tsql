@@ -427,9 +427,21 @@ EXEC sp_executesql @sql;
 ### General
 - Target **SQL Server 2019+** unless otherwise specified
 - Use `NVARCHAR` over `VARCHAR` for Unicode support unless confirmed ASCII-only
-- Use schema-qualified object names: `[dbo].[TableName]`
+- Use schema-qualified object names per the **Schema Qualification Rules** (see below)
 - Include `GO` batch separators between DDL statements
 - Use `SET ANSI_NULLS ON` and `SET QUOTED_IDENTIFIER ON` at the start of each file
+
+### Schema Qualification Rules
+
+All object references must be fully qualified. If already qualified, leave unchanged.
+
+| Object Type | Condition | Qualified Schema |
+|-------------|-----------|------------------|
+| Table | Name contains `CHIRPS` or `TIPPS` | `[CHSTObjects].[CHIRPS_TIPPS]` |
+| Table | Name begins with `SF_` | `[CHSTObjects].[PHOA]` |
+| Table | Name begins with `PIECES_` | `[CHSTObjects].[PHOA]` |
+| Function | Name begins with `EFN_` | `[Clarity_Report].[EPIC_UTIL]` |
+| All others | Default | `[Clarity_Report].[dbo]` |
 
 ### Procedures and Functions
 - Include `SET NOCOUNT ON` as the first statement

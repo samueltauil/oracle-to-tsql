@@ -74,10 +74,31 @@ Use inline comments for migration annotations:
 -- MIGRATION TODO: Oracle DBMS_OUTPUT calls converted to PRINT - review if logging framework needed
 ```
 
+## Schema Qualification Rules
+
+All object references must be fully qualified using the following mapping. If a table/function is already fully qualified, leave it unchanged.
+
+| Object Type | Condition | Qualified Schema |
+|-------------|-----------|------------------|
+| Table | Name contains `CHIRPS` or `TIPPS` | `[CHSTObjects].[CHIRPS_TIPPS]` |
+| Table | Name begins with `SF_` | `[CHSTObjects].[PHOA]` |
+| Table | Name begins with `PIECES_` | `[CHSTObjects].[PHOA]` |
+| Function | Name begins with `EFN_` | `[Clarity_Report].[EPIC_UTIL]` |
+| All others | Default | `[Clarity_Report].[dbo]` |
+
+**Examples:**
+```sql
+-- Table containing 'CHIRPS': [CHSTObjects].[CHIRPS_TIPPS].[CHIRPS_EVENTS]
+-- Table starting with 'SF_':  [CHSTObjects].[PHOA].[SF_PATIENT_DATA]
+-- Table starting with 'PIECES_': [CHSTObjects].[PHOA].[PIECES_DETAIL]
+-- Function starting with 'EFN_': [Clarity_Report].[EPIC_UTIL].[EFN_GET_VALUE]
+-- Any other object:            [Clarity_Report].[dbo].[EMPLOYEES]
+```
+
 ## Quality Requirements
 
 - Must compile without errors on SQL Server 2019+
-- Must use schema-qualified names (`[dbo].[object_name]`)
+- Must use schema-qualified names per the Schema Qualification Rules above
 - Must include `GO` batch separators between DDL statements
 - Must use `SET NOCOUNT ON` in all procedures
 - Must use `BEGIN TRY/CATCH` for error handling

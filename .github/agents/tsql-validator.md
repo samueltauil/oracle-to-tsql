@@ -119,7 +119,35 @@ Verify ALL DECODE conversions, especially those comparing to NULL.
 - [ ] Grant/permission statements are converted
 - [ ] Comments are preserved
 
-### 6. Execution Readiness Check
+### 6. File Comparison Validation (Source ↔ Output Parity)
+
+When comparing similarly named files between `oracle-sql/` and `tsql-output/`:
+
+1. **Row count parity**: The converted file must contain the **exact same number of SQL statement rows** as the source (excluding added boilerplate like `SET ANSI_NULLS ON`, `GO` separators, and file headers). Every source statement must have a corresponding converted statement.
+2. **Column name parity**: For DDL (CREATE TABLE, views, etc.), all column names from the Oracle source must appear in the T-SQL output with the same names (casing may differ). No columns should be added or dropped.
+3. **Content fidelity**: The logical content of each statement must match — field values, literal strings, numeric constants, and business logic expressions must be preserved exactly. Only syntax and function names should change per the conversion rules.
+
+Flag any discrepancies as findings:
+- Missing columns/fields → 🔴 CRITICAL
+- Extra columns/fields not in source → 🟡 WARNING
+- Altered literal values or constants → 🔴 CRITICAL
+- Row count mismatch → 🟡 WARNING (investigate cause)
+
+### 7. Schema Qualification Validation
+
+Verify all object references follow the Schema Qualification Rules:
+
+| Object Type | Condition | Expected Schema |
+|-------------|-----------|-----------------|
+| Table | Name contains `CHIRPS` or `TIPPS` | `[CHSTObjects].[CHIRPS_TIPPS]` |
+| Table | Name begins with `SF_` | `[CHSTObjects].[PHOA]` |
+| Table | Name begins with `PIECES_` | `[CHSTObjects].[PHOA]` |
+| Function | Name begins with `EFN_` | `[Clarity_Report].[EPIC_UTIL]` |
+| All others | Default | `[Clarity_Report].[dbo]` |
+
+Flag any incorrectly qualified objects (e.g., using `[dbo]` when `[CHSTObjects].[PHOA]` is required) as 🔴 CRITICAL.
+
+### 8. Execution Readiness Check
 
 If access to a SQL Server instance is available:
 - Parse the T-SQL for syntax validity using `SET PARSEONLY ON` or `SET NOEXEC ON`
@@ -128,7 +156,7 @@ If access to a SQL Server instance is available:
 
 If no SQL Server instance is available, note this limitation in the report.
 
-### 7. Generate Validation Report
+### 9. Generate Validation Report
 
 Update the consolidated migration report at `migration-reports/migration-<filename>.md`. Find the `<!-- PHASE:VALIDATION -->` marker and replace everything from that marker through to the next `---` separator with **Part 2: Validation**.
 
@@ -158,13 +186,14 @@ Replace the placeholder with this structure:
 | 1 | File header with source reference | ✅/❌ | |
 | 2 | SET ANSI_NULLS ON / SET QUOTED_IDENTIFIER ON | ✅/❌ | |
 | 3 | GO batch separators | ✅/❌ | |
-| 4 | Schema-qualified names ([dbo].) | ✅/❌ | |
+| 4 | Schema-qualified names (per Schema Qualification Rules) | ✅/❌ | |
 | 5 | SET NOCOUNT ON in procedures | ✅/❌ | |
 | 6 | BEGIN TRY/CATCH error handling | ✅/❌ | |
 | 7 | No deprecated T-SQL features | ✅/❌ | |
 | 8 | Migration notes for non-trivial conversions | ✅/❌ | |
+| 9 | File comparison parity (rows, columns, content) | ✅/❌ | |
 
-**Result**: X/8 checks passed
+**Result**: X/9 checks passed
 
 ### 2.2 Semantic Equivalence
 
